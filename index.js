@@ -3,7 +3,16 @@
 var arr = [];
 var charCodeCache = [];
 
-module.exports = function (a, b) {
+var collator;  // from https://github.com/hiddentao/fast-levenshtein
+try {
+	collator = (typeof Intl !== 'undefined' && typeof Intl.Collator !== 'undefined') ? new Intl.Collator('generic', {sensitivity: 'base'}) : null;
+} catch (err) {
+	console.log('Collator could not be initialized and wouldn\'t be used');
+}
+
+module.exports = function (a, b, options) {
+	var useCollator = (options && collator && options.useCollator);
+
 	if (a === b) {
 		return 0;
 	}
@@ -31,15 +40,28 @@ module.exports = function (a, b) {
 		arr[i] = ++i;
 	}
 
-	while (j < bLen) {
-		bCharCode = b.charCodeAt(j);
-		tmp = j++;
-		ret = j;
+	if (useCollator) {
+		while (j < bLen) {
+			bCharCode = b.charCodeAt(j);
+			tmp = j++;
+			ret = j;
+			for (i = 0; i < aLen; i++) {
+				tmp2 = collator.compare(String.fromCharCode(bCharCode), String.fromCharCode(charCodeCache[i])) === 0 ? tmp : tmp + 1;
+				tmp = arr[i];
+				ret = arr[i] = tmp > ret ? tmp2 > ret ? ret + 1 : tmp2 : tmp2 > tmp ? tmp + 1 : tmp2;
+			}
+		}
+	} else {
+		while (j < bLen) {
+			bCharCode = b.charCodeAt(j);
+			tmp = j++;
+			ret = j;
 
-		for (i = 0; i < aLen; i++) {
-			tmp2 = bCharCode === charCodeCache[i] ? tmp : tmp + 1;
-			tmp = arr[i];
-			ret = arr[i] = tmp > ret ? tmp2 > ret ? ret + 1 : tmp2 : tmp2 > tmp ? tmp + 1 : tmp2;
+			for (i = 0; i < aLen; i++) {
+				tmp2 = bCharCode === charCodeCache[i] ? tmp : tmp + 1;
+				tmp = arr[i];
+				ret = arr[i] = tmp > ret ? tmp2 > ret ? ret + 1 : tmp2 : tmp2 > tmp ? tmp + 1 : tmp2;
+			}
 		}
 	}
 
